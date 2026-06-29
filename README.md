@@ -1,16 +1,28 @@
 # F1 Track Watchface
 
-A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks rendered from SVG source data. Cars race around the track following the time, with optional race animations, extra health-data cars, and a full F1 race calendar.
+A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks rendered from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) SVG source data. Cars race around the track following the time, with optional race animations, extra health-data cars, and a full F1 race calendar.
 
 **Platform:** Pebble Emery (228×228)  
 **SDK:** Pebble C SDK 4.17
 
 ![Screenshot](screenshots/watchface.png)
 
+## Circuit Data
+
+Track geometries are derived from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) by Jules Roy. The SVG paths from that repository are converted to 45-point waypoint arrays using a batch converter (`convert_all.py` in the parent repo).
+
+The converter lives alongside the SVG source at:
+```
+../f1-circuits-svg/          # SVG source (git submodule or sibling repo)
+../f1-circuits-svg/circuits.json
+../f1-circuits-svg/circuits/minimal/black/*.svg
+../convert_all.py             # SVG → C waypoint converter
+```
+
 ## Features
 
 ### Circuit Tracks
-- 160 real F1 circuit tracks sourced from SVG data
+- 160 real F1 circuit tracks sourced from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg)
 - Tracks are centred and scaled to fit the display using arc-length parameterisation
 - Each track has 45 evenly-spaced waypoints sampled from cubic bezier paths
 - Tracks auto-detect winding direction and normalise to clockwise
@@ -104,26 +116,69 @@ The project is also compatible with CloudPebble for in-browser development.
 
 ## Project Structure
 
+This repo contains just the Pebble app. The full workspace layout:
+
 ```
-f1-track-watchface/
-├── src/
-│   ├── c/
-│   │   └── main.c              # Core watchface (4400+ lines)
-│   └── pkjs/
-│       ├── config.js            # Clay configuration page
-│       └── index.js             # Phone-side JS (calendar, messaging)
-├── build/                       # Build output (gitignored)
-├── screenshots/                 # Store screenshots and GIFs
-├── icon_80x80.png               # App icon
-├── icon_144x144.png             # App icon (large)
-├── package.json                 # Pebble project config + Clay message keys
-├── wscript                      # Waf build script
-└── README.md
+pebble-watchface-agent-skill/
+├── f1-circuits-svg/              # SVG source (github.com/julesr0y/f1-circuits-svg)
+│   ├── circuits.json             # Metadata for all 160 circuits
+│   └── circuits/minimal/black/   # SVG files
+├── convert_all.py                # SVG → C waypoint converter
+├── f1-circuits-svg-main/         # Converted C arrays
+└── f1-track-watchface/           # ← This repo (Pebble app)
+    ├── src/
+    │   ├── c/
+    │   │   └── main.c            # Core watchface (4400+ lines)
+    │   └── pkjs/
+    │       ├── config.js          # Clay configuration page
+    │       └── index.js           # Phone-side JS (calendar, messaging)
+    ├── tools/
+    │   └── convert_all.py         # SVG → C waypoint converter
+    ├── build/                     # Build output (gitignored)
+    ├── screenshots/               # Store screenshots and GIFs
+    ├── icon_80x80.png             # App icon
+    ├── icon_144x144.png           # App icon (large)
+    ├── package.json               # Pebble project config + Clay message keys
+    ├── wscript                    # Waf build script
+    └── README.md
 ```
+
+### SVG to C Converter
+
+The `tools/convert_all.py` script converts SVG circuit paths from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) into C waypoint arrays used by the watchface.
+
+**Setup:**
+```bash
+# Clone the SVG source as a sibling directory
+cd ..
+git clone https://github.com/julesr0y/f1-circuits-svg.git
+cd f1-track-watchface
+```
+
+**Usage:**
+```bash
+# Default paths (expects f1-circuits-svg in parent directory)
+python3 tools/convert_all.py
+
+# Custom paths
+python3 tools/convert_all.py --svg-dir /path/to/svg/files --output-dir src/c
+```
+
+**Output:**
+- `src/c/circuit_arrays.h` — waypoint arrays (`static const GPoint c_<key>[]`)
+- `src/c/circuit_entries.h` — table entries to paste into `s_circuits[]` in `main.c`
+
+**How it works:**
+1. Parses SVG `<path>` elements (supports `M`, `C`, `S`, `L`, `A`, `Z` commands)
+2. Densifies cubic bezier curves to 50 points per segment
+3. Computes cumulative arc length and samples 45 evenly-spaced waypoints
+4. Scales to 0–80 coordinate space and shifts centroid to (50, 50)
+5. Finds the deepest interior point (centre of largest inscribed circle) for the track centre
+6. Outputs GPoint arrays and `CIRCUIT()` macro entries
 
 ## Technical Notes
 
-- **Track geometry:** 45 waypoints per track, sampled at even arc-length intervals from SVG cubic bezier curves using a custom converter (`convert_all.py` in the parent repo)
+- **Track geometry:** 45 waypoints per track, sampled at even arc-length intervals from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) cubic bezier paths via `tools/convert_all.py`
 - **Coordinate system:** Internal 100×100 space scaled to 168×168 track area on the 228×228 Emery display
 - **Angle-to-track mapping:** Perpendicular-distance crossing detection with dot product direction filtering — handles non-convex tracks correctly
 - **Race animation:** `app_timer` at 45 fps using `time_ms()` for sub-second precision
@@ -149,6 +204,12 @@ All 22 calendar tracks with unique background colours:
 | Austin | Mexico City | Interlagos | Las Vegas |
 |--------|-------------|------------|-----------|
 | ![](screenshots/tracks/austin.png) | ![](screenshots/tracks/mexicocity3.png) | ![](screenshots/tracks/interlagos2.png) | ![](screenshots/tracks/lasvegas.png) |
+
+## Acknowledgements
+
+- [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) by Jules Roy — SVG source data for all 160 circuit tracks
+- [Pebble SDK](https://developer.rebble.io/developer.pebble.com/sdk/index.html) — watchface development platform
+- [Clay](https://github.com/nicola-pebble/pebble-clay) — configuration page framework
 
 ## License
 
