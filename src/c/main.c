@@ -12,10 +12,25 @@
 // Set to 0 for normal time.
 #define DEBUG_SPEED 0
 
+// Platform-specific track area dimensions
+#if defined(PBL_PLATFORM_EMERY)
 #define TRACK_AREA_W 168
 #define TRACK_AREA_H 168
 #define TRACK_AREA_X 16
 #define TRACK_AREA_Y 30
+#elif defined(PBL_ROUND)
+// Chalk: 180×180 round
+#define TRACK_AREA_W 140
+#define TRACK_AREA_H 140
+#define TRACK_AREA_X 20
+#define TRACK_AREA_Y 30
+#else
+// Aplite/Basalt: 144×168 rectangular
+#define TRACK_AREA_W 130
+#define TRACK_AREA_H 130
+#define TRACK_AREA_X 7
+#define TRACK_AREA_Y 25
+#endif
 
 // Coordinate space all circuit waypoints are authored in (auto-scaled to fit)
 #define COORD_SPACE 100
@@ -4192,10 +4207,22 @@ static void inbox_received_callback(DictionaryIterator *iter, void *context) {
     if (t) { s_show_battery_car = (t->value->int32 != 0); update_battery_car(); changed = true; }
 
     t = dict_find(iter, MESSAGE_KEY_SHOW_STEPS_CAR);
-    if (t) { s_show_steps_car = (t->value->int32 != 0); update_steps_car(); changed = true; }
+    if (t) {
+        s_show_steps_car = (t->value->int32 != 0);
+#ifdef PBL_HEALTH
+        update_steps_car();
+#endif
+        changed = true;
+    }
 
     t = dict_find(iter, MESSAGE_KEY_SHOW_SLEEP_CAR);
-    if (t) { s_show_sleep_car = (t->value->int32 != 0); update_sleep_car(); changed = true; }
+    if (t) {
+        s_show_sleep_car = (t->value->int32 != 0);
+#ifdef PBL_HEALTH
+        update_sleep_car();
+#endif
+        changed = true;
+    }
 
     t = dict_find(iter, MESSAGE_KEY_BATTERY_CAR_COLOR);
     if (t) { s_battery_car_hex = t->value->int32; s_battery_car_color = GColorFromHEX(s_battery_car_hex); changed = true; }
