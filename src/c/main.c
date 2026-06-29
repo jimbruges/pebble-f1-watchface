@@ -2795,6 +2795,9 @@ static int s_active_circuit = 134;  // index into s_circuits (default silverston
 
 // Cached time text
 static char s_time_buf[8];
+static char s_min_buf[4];
+static char s_date_buf[32];
+static char s_race_label_buf[64];
 
 // ---------------------------------------------------------------------------
 // Math helpers (integer only)
@@ -3281,6 +3284,63 @@ static void update_battery_car(void);
 static void update_steps_car(void);
 static void update_sleep_car(void);
 #endif
+static GFont get_time_font(void);
+static GFont get_date_font(void);
+static GFont get_race_name_font(void);
+
+// ---------------------------------------------------------------------------
+// Curved text for round display
+// ---------------------------------------------------------------------------
+#if defined(PBL_ROUND)
+// Draw text along a circular arc. Each character is positioned on the arc
+// at its natural angular position, upright (no rotation).
+// start_deg/end_deg are in Pebble trigangle degrees: 0=right, 90=down, 180=left, 270=up.
+static void draw_arc_text(GContext *ctx, const char *text, GFont font,
+                          GPoint center, int radius,
+                          int start_deg, int end_deg, GColor color) {
+    int len = strlen(text);
+    if (len <= 0) return;
+
+    graphics_context_set_text_color(ctx, color);
+
+    // Measure each character width
+    int widths[32];
+    int total_w = 0;
+    int n = len < 32 ? len : 32;
+    for (int i = 0; i < n; i++) {
+        char buf[2] = { text[i], '\0' };
+        GSize s = graphics_text_layout_get_content_size(buf, font,
+                    GRect(0, 0, 300, 50), GTextOverflowModeWordWrap, GTextAlignmentLeft);
+        widths[i] = s.w;
+        total_w += s.w;
+    }
+
+    int arc_span = end_deg - start_deg;
+    int x_pos = 0;
+
+    for (int i = 0; i < n; i++) {
+        // Map character center to angle
+        int char_center = x_pos + widths[i] / 2;
+        int angle_deg = start_deg + (arc_span * char_center) / total_w;
+        int angle_trig = DEG_TO_TRIGANGLE(angle_deg);
+
+        // Position on arc
+        int x = center.x + ((int32_t)radius * cos_lookup(angle_trig) / TRIG_MAX_RATIO);
+        int y = center.y + ((int32_t)radius * sin_lookup(angle_trig) / TRIG_MAX_RATIO);
+
+        // Use content size to get character height
+        GSize char_size = graphics_text_layout_get_content_size("A", font,
+                    GRect(0, 0, 300, 50), GTextOverflowModeWordWrap, GTextAlignmentLeft);
+        int char_h = char_size.h;
+
+        GRect box = GRect(x - widths[i] / 2, y - char_h / 2, widths[i] + 4, char_h + 2);
+        char buf[2] = { text[i], '\0' };
+        graphics_draw_text(ctx, buf, font, box, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+
+        x_pos += widths[i];
+    }
+}
+#endif
 
 static void canvas_update_proc(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
@@ -3482,6 +3542,50 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
         graphics_context_set_fill_color(ctx, GColorWhite);
         graphics_fill_circle(ctx, h_center, 3);
     }
+
+#if defined(PBL_ROUND)
+    // Curved text on round display — track name along top, time along bottom
+    {
+        int w2 = bounds.size.w, h2 = bounds.size.h;
+        int cx = w2 / 2, cy = h2 / 2;
+        int text_radius = h2 / 2 - 12; // just inside the circle edge
+
+        // Track name curved along the top
+        if (s_track_name_mode != 0 && s_race_label_buf[0] != '\0') {
+            draw_arc_text(ctx, s_race_label_buf, get_race_name_font(),
+                          GPoint(cx, cy), text_radius,
+                          220, 320, eff_text_color());
+        }
+
+        // Time text curved along the bottom
+        if (s_show_time) {
+            if (s_time_mode == 3) {
+                // Split corners: HH left, date center, MM right along bottom arc
+                draw_arc_text(ctx, s_time_buf, get_time_font(),
+                              GPoint(cx, cy), text_radius,
+                              150, 110, eff_text_color());
+                if (s_show_date && s_date_buf[0] != '\0') {
+                    draw_arc_text(ctx, s_date_buf, get_date_font(),
+                                  GPoint(cx, cy), text_radius,
+                                  110, 70, eff_text_color());
+                }
+                draw_arc_text(ctx, s_min_buf, get_time_font(),
+                              GPoint(cx, cy), text_radius,
+                              70, 30, eff_text_color());
+            } else {
+                // Digital mode: full time along bottom
+                draw_arc_text(ctx, s_time_buf, get_time_font(),
+                              GPoint(cx, cy), text_radius,
+                              150, 30, eff_text_color());
+                if (s_show_date && s_date_buf[0] != '\0') {
+                    draw_arc_text(ctx, s_date_buf, get_date_font(),
+                                  GPoint(cx, cy), text_radius - 18,
+                                  140, 40, eff_text_color());
+                }
+            }
+        }
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -3496,7 +3600,7 @@ static GFont get_date_font(void) {
 #if defined(PBL_PLATFORM_EMERY)
             return fonts_get_system_font(FONT_KEY_GOTHIC_18);
 #else
-            return fonts_get_system_font(FONT_KEY_GOTHIC_14);
+            return fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
 #endif
     }
 }
@@ -3510,7 +3614,7 @@ static int get_date_font_height(void) {
 #if defined(PBL_PLATFORM_EMERY)
             return 22;
 #else
-            return 18;
+            return 16;
 #endif
     }
 }
@@ -3526,7 +3630,7 @@ static int get_time_font_height(void) {
 #if defined(PBL_PLATFORM_EMERY)
             return 34; // Bold 30
 #else
-            return 28; // Gothic 24 Bold on smaller screens
+            return 22; // Gothic 18 on smaller screens
 #endif
     }
 }
@@ -3696,22 +3800,24 @@ static int get_race_name_font_height(void) {
 static void update_texts(struct tm *tick_time) {
     if (s_time_mode == 3) {
         // Split corners: hours left, minutes right, date below
-        static char s_min_buf[4];
         strftime(s_time_buf, sizeof(s_time_buf),
                  clock_is_24h_style() ? "%H" : "%I", tick_time);
         text_layer_set_text(s_time_layer, s_time_buf);
         strftime(s_min_buf, sizeof(s_min_buf), "%M", tick_time);
         text_layer_set_text(s_min_layer, s_min_buf);
-        text_layer_set_text(s_date_layer, get_date_str(tick_time));
+        strncpy(s_date_buf, get_date_str(tick_time), sizeof(s_date_buf) - 1);
+        s_date_buf[sizeof(s_date_buf) - 1] = '\0';
+        text_layer_set_text(s_date_layer, s_date_buf);
     } else {
         strftime(s_time_buf, sizeof(s_time_buf),
                  clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
         text_layer_set_text(s_time_layer, s_time_buf);
-        text_layer_set_text(s_date_layer, get_date_str(tick_time));
+        strncpy(s_date_buf, get_date_str(tick_time), sizeof(s_date_buf) - 1);
+        s_date_buf[sizeof(s_date_buf) - 1] = '\0';
+        text_layer_set_text(s_date_layer, s_date_buf);
     }
 
     // Race name label
-    static char s_race_label_buf[64];
     const char *label = "";
     if (s_track_name_mode == 1) {
         // Track name
@@ -3732,17 +3838,25 @@ static void update_texts(struct tm *tick_time) {
     const char *base = strip_roman(label);
     if (s_show_race_indicator && s_race_indicator[0] != '\0') {
         snprintf(s_race_label_buf, sizeof(s_race_label_buf), "%s  %s", base, s_race_indicator);
-        text_layer_set_text(s_race_layer, s_race_label_buf);
     } else {
-        text_layer_set_text(s_race_layer, base);
+        snprintf(s_race_label_buf, sizeof(s_race_label_buf), "%s", base);
     }
+    text_layer_set_text(s_race_layer, s_race_label_buf);
 }
 
 static void apply_visibility(void) {
+#if defined(PBL_ROUND)
+    // On round display, text is drawn curved in canvas — hide all text layers
+    layer_set_hidden(text_layer_get_layer(s_time_layer), true);
+    layer_set_hidden(text_layer_get_layer(s_date_layer), true);
+    layer_set_hidden(text_layer_get_layer(s_min_layer), true);
+    layer_set_hidden(text_layer_get_layer(s_race_layer), true);
+#else
     layer_set_hidden(text_layer_get_layer(s_time_layer), !s_show_time);
     layer_set_hidden(text_layer_get_layer(s_date_layer), !s_show_date);
     layer_set_hidden(text_layer_get_layer(s_min_layer), s_time_mode != 3 || !s_show_time);
     layer_set_hidden(text_layer_get_layer(s_race_layer), s_track_name_mode == 0);
+#endif
     layer_set_hidden(s_battery_layer, !s_show_battery);
 }
 
@@ -3757,7 +3871,7 @@ static GFont get_time_font(void) {
 #if defined(PBL_PLATFORM_EMERY)
             return fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
 #else
-            return fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+            return fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
 #endif
     }
 }
@@ -3768,6 +3882,13 @@ static void reconfigure_time_mode(void) {
     int w = bounds.size.w, h = bounds.size.h;
     GFont font = get_time_font();
 
+    // Round display: extra padding to avoid clipped edges
+#if defined(PBL_ROUND)
+    int bottom_pad = 54;
+#else
+    int bottom_pad = 0;
+#endif
+
     // LED mode always forces the Leco LED-style font
     if (s_time_mode == 2) {
         font = fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS);
@@ -3776,21 +3897,30 @@ static void reconfigure_time_mode(void) {
     int date_h = get_date_font_height();
     int time_h = get_time_font_height();
     int row_h = date_h > time_h ? date_h : time_h;
+    int usable_h = h - bottom_pad;
     switch (s_time_mode) {
         case 1: // analog — hide text layers, draw hands on canvas
             layer_set_hidden(text_layer_get_layer(s_time_layer), true);
             layer_set_hidden(text_layer_get_layer(s_date_layer), true);
             break;
         case 3: // split corners — hours left, date middle, minutes right, all inline at bottom
+            ;
+#if defined(PBL_ROUND)
+            int hpad = 24;
+#else
+            int hpad = 0;
+#endif
+            int side_w = (w - 2 * hpad) * 20 / 100;
+            int center_w = w - 2 * hpad - 2 * side_w;
             text_layer_set_font(s_time_layer, font);
             text_layer_set_text_alignment(s_time_layer, GTextAlignmentLeft);
-            layer_set_frame(text_layer_get_layer(s_time_layer), GRect(4, h - row_h, w / 3 - 4, row_h));
+            layer_set_frame(text_layer_get_layer(s_time_layer), GRect(hpad, usable_h - row_h, side_w, row_h));
             text_layer_set_font(s_date_layer, get_date_font());
             text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
-            layer_set_frame(text_layer_get_layer(s_date_layer), GRect(w / 3, h - row_h, w / 3, row_h));
+            layer_set_frame(text_layer_get_layer(s_date_layer), GRect(hpad, usable_h - row_h, w - 2 * hpad, row_h));
             text_layer_set_font(s_min_layer, font);
             text_layer_set_text_alignment(s_min_layer, GTextAlignmentRight);
-            layer_set_frame(text_layer_get_layer(s_min_layer), GRect(2 * w / 3, h - row_h, w / 3 - 4, row_h));
+            layer_set_frame(text_layer_get_layer(s_min_layer), GRect(hpad + side_w + center_w, usable_h - row_h, side_w, row_h));
             layer_set_hidden(text_layer_get_layer(s_time_layer), false);
             layer_set_hidden(text_layer_get_layer(s_min_layer), false);
             layer_set_hidden(text_layer_get_layer(s_date_layer), false);
@@ -3798,10 +3928,10 @@ static void reconfigure_time_mode(void) {
         default: // 0=digital — standard bottom layout
             text_layer_set_font(s_time_layer, font);
             text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
-            layer_set_frame(text_layer_get_layer(s_time_layer), GRect(0, h - row_h - date_h, w, row_h));
+            layer_set_frame(text_layer_get_layer(s_time_layer), GRect(0, usable_h - row_h - date_h, w, row_h));
             text_layer_set_font(s_date_layer, get_date_font());
             text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
-            layer_set_frame(text_layer_get_layer(s_date_layer), GRect(0, h - date_h, w, date_h));
+            layer_set_frame(text_layer_get_layer(s_date_layer), GRect(0, usable_h - date_h, w, date_h));
             layer_set_hidden(text_layer_get_layer(s_time_layer), false);
             layer_set_hidden(text_layer_get_layer(s_date_layer), false);
             break;
@@ -4356,7 +4486,12 @@ static void window_load(Window *window) {
     layer_add_child(window_layer, s_canvas_layer);
 
     int race_h = get_race_name_font_height();
-    s_race_layer = text_layer_create(GRect(0, 4, bounds.size.w, race_h));
+#if defined(PBL_ROUND)
+    int race_y = 56;
+#else
+    int race_y = 4;
+#endif
+    s_race_layer = text_layer_create(GRect(0, race_y, bounds.size.w, race_h));
     text_layer_set_text_color(s_race_layer, eff_text_color());
     text_layer_set_background_color(s_race_layer, GColorClear);
     text_layer_set_font(s_race_layer, get_race_name_font());
