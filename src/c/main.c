@@ -3548,38 +3548,40 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     {
         int w2 = bounds.size.w, h2 = bounds.size.h;
         int cx = w2 / 2, cy = h2 / 2;
-        int text_radius = h2 / 2 - 12; // just inside the circle edge
+        int bottom_radius = h2 / 2 - 4;  // as close to edge as possible
+        int top_radius = h2 / 2 - 6;
 
-        // Track name curved along the top
+        // Track name curved along the top — smallest available font
         if (s_track_name_mode != 0 && s_race_label_buf[0] != '\0') {
-            draw_arc_text(ctx, s_race_label_buf, get_race_name_font(),
-                          GPoint(cx, cy), text_radius,
-                          220, 320, eff_text_color());
+            GFont small_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+            draw_arc_text(ctx, s_race_label_buf, small_font,
+                          GPoint(cx, cy), top_radius,
+                          225, 315, eff_text_color());
         }
 
-        // Time text curved along the bottom
+        // Time text curved along the bottom — tight around 90° (straight down)
         if (s_show_time) {
             if (s_time_mode == 3) {
                 // Split corners: HH left, date center, MM right along bottom arc
                 draw_arc_text(ctx, s_time_buf, get_time_font(),
-                              GPoint(cx, cy), text_radius,
-                              150, 110, eff_text_color());
+                              GPoint(cx, cy), bottom_radius,
+                              120, 97, eff_text_color());
                 if (s_show_date && s_date_buf[0] != '\0') {
                     draw_arc_text(ctx, s_date_buf, get_date_font(),
-                                  GPoint(cx, cy), text_radius,
-                                  110, 70, eff_text_color());
+                                  GPoint(cx, cy), bottom_radius,
+                                  97, 83, eff_text_color());
                 }
                 draw_arc_text(ctx, s_min_buf, get_time_font(),
-                              GPoint(cx, cy), text_radius,
-                              70, 30, eff_text_color());
+                              GPoint(cx, cy), bottom_radius,
+                              83, 60, eff_text_color());
             } else {
                 // Digital mode: full time along bottom
                 draw_arc_text(ctx, s_time_buf, get_time_font(),
-                              GPoint(cx, cy), text_radius,
+                              GPoint(cx, cy), bottom_radius,
                               150, 30, eff_text_color());
                 if (s_show_date && s_date_buf[0] != '\0') {
                     draw_arc_text(ctx, s_date_buf, get_date_font(),
-                                  GPoint(cx, cy), text_radius - 18,
+                                  GPoint(cx, cy), bottom_radius - 16,
                                   140, 40, eff_text_color());
                 }
             }
