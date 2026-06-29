@@ -3492,7 +3492,12 @@ static GFont get_date_font(void) {
         case 1: return fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
         case 2: return fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
         case 3: return fonts_get_system_font(FONT_KEY_ROBOTO_CONDENSED_21);
-        default: return fonts_get_system_font(FONT_KEY_GOTHIC_18);
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return fonts_get_system_font(FONT_KEY_GOTHIC_18);
+#else
+            return fonts_get_system_font(FONT_KEY_GOTHIC_14);
+#endif
     }
 }
 
@@ -3501,7 +3506,12 @@ static int get_date_font_height(void) {
         case 1: return 28;
         case 2: return 32;
         case 3: return 24;
-        default: return 22;
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return 22;
+#else
+            return 18;
+#endif
     }
 }
 
@@ -3512,7 +3522,12 @@ static int get_time_font_height(void) {
         case 3: return 40;  // Leco 36
         case 4: return 46;  // Leco 42
         case 5: return 24;  // Roboto Condensed 21
-        default: return 34; // Bold 30
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return 34; // Bold 30
+#else
+            return 28; // Gothic 24 Bold on smaller screens
+#endif
     }
 }
 
@@ -3655,7 +3670,12 @@ static GFont get_race_name_font(void) {
         case 1: return fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
         case 2: return fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
         case 3: return fonts_get_system_font(FONT_KEY_ROBOTO_CONDENSED_21);
-        default: return fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+#else
+            return fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+#endif
     }
 }
 
@@ -3664,7 +3684,12 @@ static int get_race_name_font_height(void) {
         case 1: return 28;
         case 2: return 32;
         case 3: return 24;
-        default: return 22;
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return 22;
+#else
+            return 18;
+#endif
     }
 }
 
@@ -3728,7 +3753,12 @@ static GFont get_time_font(void) {
         case 3: return fonts_get_system_font(FONT_KEY_LECO_36_BOLD_NUMBERS);
         case 4: return fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS);
         case 5: return fonts_get_system_font(FONT_KEY_ROBOTO_CONDENSED_21);
-        default: return fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
+        default:
+#if defined(PBL_PLATFORM_EMERY)
+            return fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
+#else
+            return fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+#endif
     }
 }
 
