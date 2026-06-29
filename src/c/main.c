@@ -3548,8 +3548,8 @@ static void canvas_update_proc(Layer *layer, GContext *ctx) {
     {
         int w2 = bounds.size.w, h2 = bounds.size.h;
         int cx = w2 / 2, cy = h2 / 2;
-        int bottom_radius = h2 / 2 - 4;  // as close to edge as possible
-        int top_radius = h2 / 2 - 6;
+        int bottom_radius = h2 / 2 - 1;
+        int top_radius = h2 / 2 - 11;
 
         // Track name curved along the top — smallest available font
         if (s_track_name_mode != 0 && s_race_label_buf[0] != '\0') {
