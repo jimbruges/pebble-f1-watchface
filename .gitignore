@@ -1,0 +1,20 @@
+# Build artifacts
+build/
+.waf3-*
+
+# Lock files
+.lock-waf_*
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
