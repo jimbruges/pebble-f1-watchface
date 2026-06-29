@@ -7,18 +7,6 @@ A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks render
 
 ![Screenshot](screenshots/watchface.png)
 
-## Circuit Data
-
-Track geometries are derived from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) by Jules Roy. The SVG paths from that repository are converted to 45-point waypoint arrays using a batch converter (`convert_all.py` in the parent repo).
-
-The converter lives alongside the SVG source at:
-```
-../f1-circuits-svg/          # SVG source (git submodule or sibling repo)
-../f1-circuits-svg/circuits.json
-../f1-circuits-svg/circuits/minimal/black/*.svg
-../convert_all.py             # SVG → C waypoint converter
-```
-
 ## Features
 
 ### Circuit Tracks
@@ -143,6 +131,46 @@ pebble-watchface-agent-skill/
     └── README.md
 ```
 
+## Technical Notes
+
+- **Track geometry:** 45 waypoints per track, sampled at even arc-length intervals from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) cubic bezier paths via `tools/convert_all.py`
+- **Coordinate system:** Internal 100×100 space scaled to 168×168 track area on the 228×228 Emery display
+- **Angle-to-track mapping:** Perpendicular-distance crossing detection with dot product direction filtering — handles non-convex tracks correctly
+- **Race animation:** `app_timer` at 45 fps using `time_ms()` for sub-second precision
+- **Health data:** Uses `health_service_sum()` with explicit time range from midnight
+- **Settings persistence:** All settings stored via `persist_read_int`/`persist_write_int` with AppMessage updates from Clay config
+
+## Screenshots
+
+All 22 calendar tracks with unique background colours:
+
+| Melbourne | Shanghai | Suzuka | Miami |
+|-----------|----------|--------|-------|
+| ![](screenshots/tracks/melbourne2.png) | ![](screenshots/tracks/shanghai.png) | ![](screenshots/tracks/suzuka2.png) | ![](screenshots/tracks/miami.png) |
+
+| Monaco | Barcelona | Silverstone | Spa |
+|--------|-----------|-------------|-----|
+| ![](screenshots/tracks/monaco6.png) | ![](screenshots/tracks/catalunya6.png) | ![](screenshots/tracks/silverstone8.png) | ![](screenshots/tracks/spa4.png) |
+
+| Monza | Madrid | Baku | Marina Bay |
+|-------|--------|------|------------|
+| ![](screenshots/tracks/monza7.png) | ![](screenshots/tracks/madrid.png) | ![](screenshots/tracks/baku.png) | ![](screenshots/tracks/marinabay4.png) |
+
+| Austin | Mexico City | Interlagos | Las Vegas |
+|--------|-------------|------------|-----------|
+| ![](screenshots/tracks/austin.png) | ![](screenshots/tracks/mexicocity3.png) | ![](screenshots/tracks/interlagos2.png) | ![](screenshots/tracks/lasvegas.png) |
+
+## Circuit Data
+
+Track geometries are derived from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) by Jules Roy. The SVG paths from that repository are converted to 45-point waypoint arrays using a batch converter (`convert_all.py` in the parent repo).
+
+The converter lives alongside the SVG source at:
+```
+../f1-circuits-svg/          # SVG source (git submodule or sibling repo)
+../f1-circuits-svg/circuits.json
+../f1-circuits-svg/circuits/minimal/black/*.svg
+../convert_all.py             # SVG → C waypoint converter
+```
 ### SVG to C Converter
 
 The `tools/convert_all.py` script converts SVG circuit paths from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) into C waypoint arrays used by the watchface.
@@ -176,34 +204,6 @@ python3 tools/convert_all.py --svg-dir /path/to/svg/files --output-dir src/c
 5. Finds the deepest interior point (centre of largest inscribed circle) for the track centre
 6. Outputs GPoint arrays and `CIRCUIT()` macro entries
 
-## Technical Notes
-
-- **Track geometry:** 45 waypoints per track, sampled at even arc-length intervals from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) cubic bezier paths via `tools/convert_all.py`
-- **Coordinate system:** Internal 100×100 space scaled to 168×168 track area on the 228×228 Emery display
-- **Angle-to-track mapping:** Perpendicular-distance crossing detection with dot product direction filtering — handles non-convex tracks correctly
-- **Race animation:** `app_timer` at 45 fps using `time_ms()` for sub-second precision
-- **Health data:** Uses `health_service_sum()` with explicit time range from midnight
-- **Settings persistence:** All settings stored via `persist_read_int`/`persist_write_int` with AppMessage updates from Clay config
-
-## Screenshots
-
-All 22 calendar tracks with unique background colours:
-
-| Melbourne | Shanghai | Suzuka | Miami |
-|-----------|----------|--------|-------|
-| ![](screenshots/tracks/melbourne2.png) | ![](screenshots/tracks/shanghai.png) | ![](screenshots/tracks/suzuka2.png) | ![](screenshots/tracks/miami.png) |
-
-| Monaco | Barcelona | Silverstone | Spa |
-|--------|-----------|-------------|-----|
-| ![](screenshots/tracks/monaco6.png) | ![](screenshots/tracks/catalunya6.png) | ![](screenshots/tracks/silverstone8.png) | ![](screenshots/tracks/spa4.png) |
-
-| Monza | Madrid | Baku | Marina Bay |
-|-------|--------|------|------------|
-| ![](screenshots/tracks/monza7.png) | ![](screenshots/tracks/madrid.png) | ![](screenshots/tracks/baku.png) | ![](screenshots/tracks/marinabay4.png) |
-
-| Austin | Mexico City | Interlagos | Las Vegas |
-|--------|-------------|------------|-----------|
-| ![](screenshots/tracks/austin.png) | ![](screenshots/tracks/mexicocity3.png) | ![](screenshots/tracks/interlagos2.png) | ![](screenshots/tracks/lasvegas.png) |
 
 ## Acknowledgements
 
