@@ -2,6 +2,9 @@
 
 A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks rendered from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) SVG source data. Cars race around the track following the time, with optional race animations, extra health-data cars, and a full F1 race calendar.
 
+
+Watchface available on Pebble Store: https://apps.rePebble.com/765f0c27d5b042e7a6205422
+
 **Platform:** Emery (228×228), Diorite (144×168), Basalt (144×168)  
 **SDK:** Pebble C SDK 4.17
 
@@ -216,3 +219,5 @@ python3 tools/convert_all.py --svg-dir /path/to/svg/files --output-dir src/c
 ## License
 
 MIT
+
+
