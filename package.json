@@ -12,7 +12,7 @@
     "uuid": "37f3e4b2-9006-48ac-9564-6b5d745418aa",
     "sdkVersion": "3",
     "enableMultiJS": true,
-    "targetPlatforms": ["emery", "basalt"],
+    "targetPlatforms": ["emery", "basalt", "diorite"],
     "capabilities": ["configurable"],
     "messageKeys": [
       "FOLLOW_CALENDAR",
