@@ -1,4 +1,4 @@
-# F1 Track Watchface
+# LapTime - F1 Track Watchface
 
 A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks rendered from [f1-circuits-svg](https://github.com/julesr0y/f1-circuits-svg) SVG source data. Cars race around the track following the time, with optional race animations, extra health-data cars, and a full F1 race calendar.
 
@@ -7,7 +7,7 @@ A Pebble smartwatch watchface featuring 160 real Formula 1 circuit tracks render
 
 > **Note:** Aplite is not supported — 160 circuit arrays exceed its 96KB app space.
 
-![Emery](screenshots/emery.png) ![Basalt](screenshots/basalt.png) ![Diorite](screenshot_diorite.png)
+![Emery](screenshots/emery_1.0.0_20260629-223457.gif) ![Basalt](screenshots/basalt_1.0.3_20260630-100118.gif) ![Diorite](screenshots/basalt_1.0.3_20260630-110118.gif)
 
 ## Features
 
