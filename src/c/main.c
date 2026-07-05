@@ -3956,6 +3956,58 @@ static void battery_handler(BatteryChargeState state) {
     layer_mark_dirty(s_canvas_layer);
 }
 
+// ---------------------------------------------------------------------------
+// Race indicator: compute FP / Q / GP on the C side based on the current
+// race's Sunday date.  The phone sends RACE_INDICATOR once, but if the
+// watch restarts or the day rolls over, it goes stale.  Computing it
+// locally every minute keeps it always current.
+// ---------------------------------------------------------------------------
+
+// 2026 race calendar — Sunday dates (month, day).  Must match index.js.
+// Only the date is needed; track/name come from the phone.
+static const uint8_t s_race_dates[][2] = {
+    { 3,  8 },  // Melbourne
+    { 3, 15 },  // Shanghai
+    { 3, 29 },  // Suzuka
+    { 5,  3 },  // Miami
+    { 5, 24 },  // Montreal
+    { 6,  7 },  // Monaco
+    { 6, 14 },  // Barcelona
+    { 6, 28 },  // Spielberg
+    { 7,  5 },  // Silverstone
+    { 7, 19 },  // Spa
+    { 7, 26 },  // Hungaroring
+    { 8, 23 },  // Zandvoort
+    { 9,  6 },  // Monza
+    { 9, 13 },  // Madrid
+    { 9, 26 },  // Baku
+    { 10, 11 }, // Marina Bay
+    { 10, 25 }, // Austin
+    { 11,  1 }, // Mexico City
+    { 11,  8 }, // Interlagos
+    { 11, 21 }, // Las Vegas
+    { 11, 29 }, // Lusail
+    { 12,  6 }, // Yas Marina
+};
+#define NUM_RACE_DATES (int)(sizeof(s_race_dates) / sizeof(s_race_dates[0]))
+
+static void update_race_indicator(struct tm *now) {
+    if (!s_show_race_indicator) {
+        s_race_indicator[0] = '\0';
+        return;
+    }
+    int today_md = (now->tm_mon + 1) * 100 + now->tm_mday;
+
+    for (int i = 0; i < NUM_RACE_DATES; i++) {
+        int race_md = s_race_dates[i][0] * 100 + s_race_dates[i][1];
+        int diff = today_md - race_md;
+        if (diff == 0) { strcpy(s_race_indicator, "GP"); return; }
+        if (diff == -1) { strcpy(s_race_indicator, "Q"); return; }
+        if (diff == -2) { strcpy(s_race_indicator, "FP"); return; }
+    }
+    s_race_indicator[0] = '\0';
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     if (tick_time == NULL) return;
 
@@ -3971,6 +4023,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
     // Only refresh the digital text on minute boundaries to save a little work.
     if ((units_changed & MINUTE_UNIT) || s_time_buf[0] == '\0') {
+        update_race_indicator(tick_time);
         update_texts(tick_time);
     }
     // Update extra cars at same frequency as the clock
